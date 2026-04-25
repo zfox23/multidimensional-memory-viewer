@@ -6,6 +6,7 @@ AppController::AppController(QObject* parent)
     : QObject(parent)
 {
     connect(&m_audio, &AudioEngine::mutedChanged, this, &AppController::mutedChanged);
+    connect(&m_audio, &AudioEngine::positionChanged, this, &AppController::audioPositionChanged);
 }
 
 QString AppController::currentImagePath() const
@@ -28,6 +29,7 @@ bool AppController::hasContent() const { return !m_mdms.isEmpty(); }
 ThumbnailModel* AppController::thumbnailModel() { return &m_thumbnailModel; }
 float AppController::yaw() const { return m_yaw; }
 float AppController::pitch() const { return m_pitch; }
+float AppController::audioPosition() const { return m_audio.audioPosition(); }
 
 void AppController::loadFolder(const QUrl& folderUrl)
 {

@@ -22,11 +22,14 @@ void main()
     // Map the item's [0,1]×[0,1] UV to normalized device coords [-1,1]×[-1,1]
     vec2 ndc = vTexCoord * 2.0 - 1.0;
 
-    // Reconstruct the view-space ray direction for this fragment
+    // Reconstruct the view-space ray direction for this fragment.
+    // Qt Quick's vTexCoord has y=0 at the TOP of the item, but in view space
+    // positive Y points UP, so we negate ndc.y so the top of the screen
+    // corresponds to looking upward.
     float tanHalf = tan(ubuf.fov * 0.5);
     vec3 ray = normalize(vec3(
         ndc.x * ubuf.aspectRatio * tanHalf,
-        ndc.y * tanHalf,
+        -ndc.y * tanHalf,
         -1.0   // camera looks down -Z in view space
     ));
 

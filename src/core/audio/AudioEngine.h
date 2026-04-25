@@ -18,6 +18,14 @@ public:
     void setDecoder(AmbisonicDecoder* decoder);
     void resetPlayback();
 
+    // Thread-safe: readable from any thread while audio thread writes.
+    float positionRatio() const;
+    qint64 totalFrames() const { return m_totalFrames.load(std::memory_order_relaxed); }
+
+    // Must return true so QIODevice::read() calls readData() directly
+    // instead of checking bytesAvailable() (which returns 0 for custom devices).
+    bool isSequential() const override { return true; }
+
 protected:
     qint64 readData(char* data, qint64 maxSize) override;
     qint64 writeData(const char*, qint64) override { return -1; }
@@ -25,8 +33,8 @@ protected:
 private:
     QVector<float> m_pcm;
     int m_channels = 4;
-    qint64 m_framePos = 0;   // current read head in frames
-    qint64 m_totalFrames = 0;
+    std::atomic<qint64> m_framePos{0};
+    std::atomic<qint64> m_totalFrames{0};
     AmbisonicDecoder* m_decoder = nullptr;
 };
 
@@ -43,12 +51,22 @@ public:
     void setMuted(bool muted);
     bool isMuted() const;
 
+    float audioPosition() const;
+
     // Called from the UI thread whenever the camera orientation changes.
     void setOrientation(float yaw, float pitch, float roll = 0.0f);
+
+    // Compute a normalized amplitude envelope from a decoded PCM buffer.
+    // Returns numBuckets values in [0, 1] representing peak amplitude per window.
+    // Uses the W (omnidirectional) channel for the best mono representation.
+    static QVector<float> computeWaveform(const QVector<float>& pcm,
+                                          int channels,
+                                          int numBuckets = 200);
 
 signals:
     void mutedChanged(bool muted);
     void loadError(const QString& message);
+    void positionChanged(float position);   // fired ~20×/sec
 
 private:
     void setupSink();
@@ -57,4 +75,5 @@ private:
     AmbisonicAudioDevice m_device;
     QAudioSink* m_sink = nullptr;
     bool m_muted = false;
+    class QTimer* m_positionTimer = nullptr;
 };

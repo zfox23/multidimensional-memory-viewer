@@ -37,7 +37,7 @@ ApplicationWindow {
 
         ThumbnailStrip {
             Layout.fillWidth: true
-            Layout.preferredHeight: 140
+            Layout.preferredHeight: 175
             visible: appController.hasContent
         }
     }

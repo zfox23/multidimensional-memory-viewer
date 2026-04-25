@@ -17,6 +17,7 @@ class AppController : public QObject {
     Q_PROPERTY(ThumbnailModel* thumbnailModel READ thumbnailModel CONSTANT)
     Q_PROPERTY(float yaw READ yaw WRITE setYaw NOTIFY yawChanged)
     Q_PROPERTY(float pitch READ pitch WRITE setPitch NOTIFY pitchChanged)
+    Q_PROPERTY(float audioPosition READ audioPosition NOTIFY audioPositionChanged)
 
 public:
     explicit AppController(QObject* parent = nullptr);
@@ -29,6 +30,7 @@ public:
     ThumbnailModel* thumbnailModel();
     float yaw() const;
     float pitch() const;
+    float audioPosition() const;
 
     Q_INVOKABLE void loadFolder(const QUrl& folderUrl);
     Q_INVOKABLE void selectMdm(int index);
@@ -43,6 +45,7 @@ signals:
     void hasContentChanged();
     void yawChanged();
     void pitchChanged();
+    void audioPositionChanged();
 
 private:
     void loadMdm(int index);

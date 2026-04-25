@@ -1,6 +1,7 @@
 #pragma once
 #include <QAbstractListModel>
 #include <QList>
+#include <QVector>
 #include "mdm/MdmFile.h"
 
 class ThumbnailModel : public QAbstractListModel {
@@ -10,6 +11,7 @@ public:
         DisplayNameRole = Qt::UserRole + 1,
         ImagePathRole,
         HasAudioRole,
+        WaveformRole,     // QVariantList of floats 0.0–1.0, empty while computing
     };
 
     explicit ThumbnailModel(QObject* parent = nullptr);
@@ -21,5 +23,9 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
 private:
+    void computeWaveformAsync(int row, const QString& audioPath, int generation);
+
     QList<MdmFile> m_mdms;
+    QVector<QVector<float>> m_waveforms;
+    int m_generation = 0;   // incremented on each setMdms() to discard stale results
 };

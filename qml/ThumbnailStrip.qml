@@ -26,7 +26,6 @@ Rectangle {
 
         model: appController.thumbnailModel
 
-        // Scroll to keep the active item visible when it changes
         Connections {
             target: appController
             function onCurrentIndexChanged() {
@@ -35,6 +34,7 @@ Rectangle {
         }
 
         delegate: Item {
+            id: delegateRoot
             width: 120
             height: strip.height
 
@@ -42,10 +42,11 @@ Rectangle {
             required property string imagePath
             required property string displayName
             required property bool hasAudio
+            required property var waveform
 
             readonly property bool isCurrent: index === appController.currentIndex
 
-            // Thumbnail image via the async provider
+            // ── Thumbnail image ───────────────────────────────────────────────
             Image {
                 id: thumb
                 anchors {
@@ -54,13 +55,13 @@ Rectangle {
                     horizontalCenter: parent.horizontalCenter
                 }
                 width: 110
-                height: 95
+                height: 80
+                // Provider returns an exact left-eye square; show it in full
                 source: "image://mdmthumbnail/" + encodeURIComponent(imagePath)
-                fillMode: Image.PreserveAspectCrop
+                fillMode: Image.PreserveAspectFit
                 asynchronous: true
                 smooth: true
 
-                // Loading placeholder
                 Rectangle {
                     anchors.fill: parent
                     color: "#222"
@@ -68,17 +69,18 @@ Rectangle {
                     BusyIndicator {
                         anchors.centerIn: parent
                         running: parent.visible
-                        implicitWidth: 24
-                        implicitHeight: 24
+                        implicitWidth: 20
+                        implicitHeight: 20
                     }
                 }
             }
 
-            // Display name below the thumbnail
+            // ── Display name ──────────────────────────────────────────────────
             Text {
+                id: nameLabel
                 anchors {
                     top: thumb.bottom
-                    topMargin: 4
+                    topMargin: 3
                     left: parent.left
                     right: parent.right
                 }
@@ -89,7 +91,76 @@ Rectangle {
                 horizontalAlignment: Text.AlignHCenter
             }
 
-            // Audio indicator dot
+            // ── Waveform ──────────────────────────────────────────────────────
+            Item {
+                id: waveArea
+                anchors {
+                    top: nameLabel.bottom
+                    topMargin: 4
+                    horizontalCenter: parent.horizontalCenter
+                }
+                width: 110
+                height: 28
+
+                Canvas {
+                    id: waveCanvas
+                    anchors.fill: parent
+
+                    onPaint: {
+                        const ctx = getContext("2d");
+                        ctx.clearRect(0, 0, width, height);
+
+                        const data = delegateRoot.waveform;
+                        const centerY = height / 2;
+                        const active = delegateRoot.isCurrent;
+
+                        if (!data || data.length === 0) {
+                            // Placeholder dashes while waveform loads
+                            ctx.fillStyle = "#2a2a2a";
+                            const dashes = 40;
+                            const dw = width / dashes;
+                            for (let i = 0; i < dashes; i++)
+                                ctx.fillRect(i * dw, centerY - 1.5, Math.max(1, dw - 1), 3);
+                            return;
+                        }
+
+                        const n = data.length;
+                        const barW = width / n;
+                        ctx.fillStyle = active ? "#4fc3f7" : "#2a5a70";
+
+                        for (let i = 0; i < n; i++) {
+                            const h = Math.max(1.5, data[i] * height * 0.88);
+                            ctx.fillRect(
+                                i * barW,
+                                centerY - h * 0.5,
+                                Math.max(0.5, barW - 0.5),
+                                h
+                            );
+                        }
+                    }
+
+                    // Repaint when waveform data arrives
+                    Connections {
+                        target: delegateRoot
+                        function onWaveformChanged() { waveCanvas.requestPaint(); }
+                        function onIsCurrentChanged() { waveCanvas.requestPaint(); }
+                    }
+                    Component.onCompleted: requestPaint()
+                }
+
+                // ── Playback progress line ─────────────────────────────────
+                Rectangle {
+                    visible: delegateRoot.isCurrent && delegateRoot.hasAudio
+                    width: 2
+                    height: parent.height
+                    color: "#ffffff"
+                    opacity: 0.75
+                    x: appController.audioPosition * parent.width - 1
+                    z: 1
+                }
+            }
+
+            // ── Audio indicator dot ───────────────────────────────────────────
             Rectangle {
                 anchors {
                     right: thumb.right
@@ -103,7 +174,7 @@ Rectangle {
                 visible: hasAudio
             }
 
-            // Selection highlight
+            // ── Selection highlight ───────────────────────────────────────────
             Rectangle {
                 anchors.fill: thumb
                 color: "transparent"
@@ -112,7 +183,7 @@ Rectangle {
                 radius: 2
             }
 
-            // Click handler
+            // ── Click handler ─────────────────────────────────────────────────
             MouseArea {
                 anchors.fill: parent
                 onClicked: appController.selectMdm(index)

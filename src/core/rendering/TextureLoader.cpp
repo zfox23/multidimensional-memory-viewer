@@ -29,27 +29,20 @@ QImage TextureLoader::makeThumbnail(const QString& path, int size)
     QImageReader reader(path);
     reader.setAutoTransform(true);
 
-    // Read at reduced scale to avoid loading the full 8192×4096 image
+    // The MDM image is an 8192×4096 SBS image: 2:1 width-to-height ratio,
+    // with the left-eye square occupying the left half (4096×4096).
+    // Ask the decoder to produce a proportionally scaled image where the
+    // left eye occupies exactly size×size pixels after cropping.
+    // Scaling the full image to (size*2 × size) preserves the 2:1 ratio,
+    // so the left half is exactly size×size — no distortion, no over-crop.
     const QSize nativeSize = reader.size();
-    if (nativeSize.isValid()) {
-        // Left-eye half is the left nativeSize.width()/2 × full height
-        const int halfW = nativeSize.width() / 2;
-        const QSize scaleTarget(size * 2, size * 2); // slightly larger than needed
-        reader.setScaledSize(QSize(
-            qMax(size, halfW * scaleTarget.height() / nativeSize.height()),
-            scaleTarget.height()
-        ));
-    }
+    if (nativeSize.isValid())
+        reader.setScaledSize(QSize(size * 2, size));
 
     QImage img = reader.read();
     if (img.isNull())
         return {};
 
-    // Crop to left eye half
-    const int leftW = img.width() / 2;
-    img = img.copy(0, 0, leftW, img.height());
-
-    // Scale to square thumbnail
-    return img.scaled(size, size, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation)
-              .copy(0, 0, size, size);
+    // Crop to the left-eye square (left size × size pixels)
+    return img.copy(0, 0, size, img.height());
 }
