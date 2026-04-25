@@ -33,19 +33,22 @@ void main()
         -1.0   // camera looks down -Z in view space
     ));
 
-    // Apply yaw (rotation around the Y/up axis)
+    // Apply pitch first (around the local/model X axis), then yaw (around world Y).
+    // This order — Ry(yaw) * Rx(pitch) — keeps the horizon level regardless of yaw.
+    // Applying yaw first would rotate the pitch axis with the view, causing gimbal lock
+    // at ±90° yaw where pitch becomes indistinguishable from roll.
+
+    float cp = cos(-ubuf.pitch), sp = sin(-ubuf.pitch);
+    float ry  =  ray.y * cp - ray.z * sp;
+    float rz1 =  ray.y * sp + ray.z * cp;
+    ray.y = ry;
+    ray.z = rz1;
+
     float cy = cos(ubuf.yaw), sy = sin(ubuf.yaw);
     float rx = ray.x * cy + ray.z * sy;
     float rz = -ray.x * sy + ray.z * cy;
     ray.x = rx;
     ray.z = rz;
-
-    // Apply pitch (rotation around the X/right axis)
-    float cp = cos(-ubuf.pitch), sp = sin(-ubuf.pitch);
-    float ry  =  ray.y * cp - ray.z * sp;
-    float rz2 =  ray.y * sp + ray.z * cp;
-    ray.y = ry;
-    ray.z = rz2;
 
     // Convert direction to spherical coordinates.
     // azimuth: angle in the horizontal plane from -Z forward axis; [-π, +π]

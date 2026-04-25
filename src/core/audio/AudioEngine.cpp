@@ -167,25 +167,59 @@ void AudioEngine::play()
     if (!m_sink) return;
 
     m_device.resetPlayback();
-    if (!m_device.isOpen())
-        m_device.open(QIODevice::ReadOnly);
 
-    m_sink->start(&m_device);
-
-    if (m_sink->error() != QAudio::NoError) {
-        qWarning("AudioEngine: QAudioSink error after start(): %d",
-                 (int)m_sink->error());
-    } else {
-        qDebug("AudioEngine: playback started, state=%d", (int)m_sink->state());
-        m_positionTimer->start();
+    // Clean up any previous push timer.
+    if (m_audioTimer) {
+        m_audioTimer->stop();
+        delete m_audioTimer;
+        m_audioTimer = nullptr;
     }
+    m_pushDevice = nullptr;
+
+    // Push mode: the sink gives us a writable QIODevice; we feed it from a timer.
+    // This is more reliable than pull mode on macOS CoreAudio.
+    m_pushDevice = m_sink->start();
+
+    if (!m_pushDevice || m_sink->error() != QAudio::NoError) {
+        qWarning("AudioEngine: sink start failed, error=%d", (int)m_sink->error());
+        return;
+    }
+
+    qDebug("AudioEngine: playback started (push mode), state=%d", (int)m_sink->state());
+
+    // Prime the buffer immediately, then top it up every 20 ms.
+    pushAudio();
+
+    m_audioTimer = new QTimer(this);
+    m_audioTimer->setInterval(20);
+    connect(m_audioTimer, &QTimer::timeout, this, &AudioEngine::pushAudio);
+    m_audioTimer->start();
+
+    m_positionTimer->start();
+}
+
+void AudioEngine::pushAudio()
+{
+    if (!m_pushDevice || !m_sink) return;
+    const qint64 bytesFree = m_sink->bytesFree();
+    if (bytesFree <= 0) return;
+
+    QByteArray buf(bytesFree, '\0');
+    const qint64 written = m_device.readData(buf.data(), bytesFree);
+    if (written > 0)
+        m_pushDevice->write(buf.constData(), written);
 }
 
 void AudioEngine::stop()
 {
     m_positionTimer->stop();
+    if (m_audioTimer) {
+        m_audioTimer->stop();
+        delete m_audioTimer;
+        m_audioTimer = nullptr;
+    }
+    m_pushDevice = nullptr;
     if (m_sink) m_sink->stop();
-    if (m_device.isOpen()) m_device.close();
 }
 
 void AudioEngine::setMuted(bool muted)

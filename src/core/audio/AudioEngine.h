@@ -26,8 +26,10 @@ public:
     // instead of checking bytesAvailable() (which returns 0 for custom devices).
     bool isSequential() const override { return true; }
 
-protected:
+    // Public so AudioEngine can call it directly in push mode.
     qint64 readData(char* data, qint64 maxSize) override;
+
+protected:
     qint64 writeData(const char*, qint64) override { return -1; }
 
 private:
@@ -70,10 +72,13 @@ signals:
 
 private:
     void setupSink();
+    void pushAudio();
 
     AmbisonicDecoder m_decoder;
     AmbisonicAudioDevice m_device;
     QAudioSink* m_sink = nullptr;
+    QIODevice* m_pushDevice = nullptr;   // owned by m_sink, not by us
     bool m_muted = false;
     class QTimer* m_positionTimer = nullptr;
+    class QTimer* m_audioTimer = nullptr;
 };

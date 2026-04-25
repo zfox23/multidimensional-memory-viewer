@@ -81,7 +81,7 @@ Item {
             lastY = mouse.y
 
             const newYaw   = appController.yaw   - dx * kSens
-            const newPitch = appController.pitch  - dy * kSens
+            const newPitch = appController.pitch  + dy * kSens
             appController.yaw   = newYaw
             appController.pitch = Math.max(-1.48, Math.min(1.48, newPitch))
         }

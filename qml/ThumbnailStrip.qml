@@ -155,23 +155,9 @@ Rectangle {
                     height: parent.height
                     color: "#ffffff"
                     opacity: 0.75
-                    x: appController.audioPosition * parent.width - 1
+                    x: Math.max(0, appController.audioPosition * parent.width - 1)
                     z: 1
                 }
-            }
-
-            // ── Audio indicator dot ───────────────────────────────────────────
-            Rectangle {
-                anchors {
-                    right: thumb.right
-                    top: thumb.top
-                    margins: 3
-                }
-                width: 8
-                height: 8
-                radius: 4
-                color: "#4fc3f7"
-                visible: hasAudio
             }
 
             // ── Selection highlight ───────────────────────────────────────────
