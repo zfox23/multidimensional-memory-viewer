@@ -24,6 +24,7 @@ AmbisonicDecoder::AmbisonicDecoder(AmbisonicFormat format)
 
     m_inBuf.assign(kNCHin  * m_frameSize, 0.0f);
     m_outBuf.assign(kNCHout * m_frameSize, 0.0f);
+    m_spillBuf.assign(kNCHout * m_frameSize, 0.0f);
 
     for (int i = 0; i < kNCHin;  ++i) m_inPtrs[i]  = m_inBuf.data()  + i * m_frameSize;
     for (int i = 0; i < kNCHout; ++i) m_outPtrs[i] = m_outBuf.data() + i * m_frameSize;
@@ -58,6 +59,7 @@ void AmbisonicDecoder::setOrientation(float yaw, float pitch, float roll)
 void AmbisonicDecoder::reset()
 {
     m_inCount         = 0;
+    m_spillCount      = 0;
     m_fadeInRemaining = kFadeInFrames;
     std::fill(m_inBuf.begin(), m_inBuf.end(), 0.0f);
 }
@@ -78,8 +80,19 @@ void AmbisonicDecoder::process(const float* in4ch, float* out2ch, int frameCount
     std::fill(out2ch, out2ch + frameCount * 2, 0.0f);
 
     int outOffset = 0;
-    int inOffset  = 0;
 
+    // Drain any spill carried over from the previous call first.
+    if (m_spillCount > 0) {
+        const int toDrain = std::min(m_spillCount, frameCount);
+        std::memcpy(out2ch, m_spillBuf.data(), toDrain * 2 * sizeof(float));
+        if (toDrain < m_spillCount)
+            std::memmove(m_spillBuf.data(), m_spillBuf.data() + toDrain * 2,
+                         (m_spillCount - toDrain) * 2 * sizeof(float));
+        m_spillCount -= toDrain;
+        outOffset = toDrain;
+    }
+
+    int inOffset = 0;
     while (inOffset < frameCount) {
         const int toAdd = std::min(frameCount - inOffset, m_frameSize - m_inCount);
 
@@ -99,13 +112,22 @@ void AmbisonicDecoder::process(const float* in4ch, float* out2ch, int frameCount
                              kNCHin, kNCHout, m_frameSize);
             m_inCount = 0;
 
-            // Write directly to output buffer — always fits since:
-            //   outOffset + m_frameSize ≤ inOffset ≤ frameCount
-            for (int i = 0; i < m_frameSize; ++i) {
+            // Write as much output as fits; any remainder goes to the spill buffer
+            // so it leads the next call. This handles the case where a non-zero
+            // m_inCount carry-in causes one extra ambi_bin_process per call.
+            const int canWrite = std::min(m_frameSize, frameCount - outOffset);
+            for (int i = 0; i < canWrite; ++i) {
                 out2ch[(outOffset + i) * 2 + 0] = m_outPtrs[0][i];
                 out2ch[(outOffset + i) * 2 + 1] = m_outPtrs[1][i];
             }
-            outOffset += m_frameSize;
+            outOffset += canWrite;
+
+            const int spill = m_frameSize - canWrite;
+            for (int i = 0; i < spill; ++i) {
+                m_spillBuf[(m_spillCount + i) * 2 + 0] = m_outPtrs[0][canWrite + i];
+                m_spillBuf[(m_spillCount + i) * 2 + 1] = m_outPtrs[1][canWrite + i];
+            }
+            m_spillCount += spill;
         }
     }
 

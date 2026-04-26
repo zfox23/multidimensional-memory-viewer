@@ -43,5 +43,10 @@ private:
     float* m_inPtrs[kNCHin]   = {};
     float* m_outPtrs[kNCHout] = {};
 
+    // Spill buffer: holds at most one frameSize worth of output that didn't
+    // fit in the caller's out2ch when m_inCount carried over from the previous call.
+    std::vector<float> m_spillBuf;  // interleaved stereo, capacity = frameSize * 2
+    int m_spillCount = 0;           // frames currently held
+
     int m_fadeInRemaining = 0;  // output samples still needing fade-in ramp
 };

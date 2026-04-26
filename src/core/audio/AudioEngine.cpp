@@ -193,7 +193,7 @@ void AudioEngine::play()
     pushAudio();
 
     m_audioTimer = new QTimer(this);
-    m_audioTimer->setInterval(20);
+    m_audioTimer->setInterval(5);
     connect(m_audioTimer, &QTimer::timeout, this, &AudioEngine::pushAudio);
     m_audioTimer->start();
 
