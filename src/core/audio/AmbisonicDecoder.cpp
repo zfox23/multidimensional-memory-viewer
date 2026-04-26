@@ -2,6 +2,7 @@
 #include <ambi_bin.h>
 #include <algorithm>
 #include <cstring>
+#include <QDebug>
 
 static constexpr float kRadToDeg = 57.29577951308232f;  // 180/pi
 
@@ -12,8 +13,12 @@ AmbisonicDecoder::AmbisonicDecoder(AmbisonicFormat format)
     ambi_bin_setInputOrderPreset(m_hAmbi, SH_ORDER_FIRST);
     ambi_bin_setEnableRotation(m_hAmbi, 1);
     applyFormat();
-    ambi_bin_initCodec(m_hAmbi);
+
+    // ambi_bin_init must come before ambi_bin_initCodec: init resets
+    // codecStatus=NOT_INITIALISED on its first call (firstInit flag), so
+    // any initCodec called before it will be undone.
     ambi_bin_init(m_hAmbi, 48000);
+    ambi_bin_initCodec(m_hAmbi);
 
     m_frameSize = ambi_bin_getFrameSize();
 
@@ -23,6 +28,9 @@ AmbisonicDecoder::AmbisonicDecoder(AmbisonicFormat format)
 
     for (int i = 0; i < kNCHin;  ++i) m_inPtrs[i]  = m_inBuf.data()  + i * m_frameSize;
     for (int i = 0; i < kNCHout; ++i) m_outPtrs[i] = m_outBuf.data() + i * m_frameSize;
+
+    qDebug("AmbisonicDecoder: created — frameSize=%d codecStatus=%d (0=OK)",
+           m_frameSize, (int)ambi_bin_getCodecStatus(m_hAmbi));
 }
 
 AmbisonicDecoder::~AmbisonicDecoder()
@@ -36,6 +44,8 @@ void AmbisonicDecoder::setFormat(AmbisonicFormat format)
     m_format = format;
     applyFormat();
     ambi_bin_initCodec(m_hAmbi);
+    qDebug("AmbisonicDecoder: format changed — codecStatus=%d",
+           (int)ambi_bin_getCodecStatus(m_hAmbi));
 }
 
 void AmbisonicDecoder::setOrientation(float yaw, float pitch, float roll)

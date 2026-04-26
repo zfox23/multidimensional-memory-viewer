@@ -101,11 +101,5 @@ Item {
             color: "#888"
             font.pixelSize: 22
         }
-        Text {
-            anchors.horizontalCenter: parent.horizontalCenter
-            text: "Use File → Open Folder to select an MDM folder"
-            color: "#555"
-            font.pixelSize: 14
-        }
     }
 }
