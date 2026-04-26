@@ -15,10 +15,11 @@ QList<MdmFile> MdmScanner::scan(const QString& folderPath)
     QStringList audioFiles;
     for (const QFileInfo& fi : dir.entryInfoList(QDir::Files, QDir::Name)) {
         const QString name = fi.fileName();
-        if (name.endsWith(QStringLiteral(".ambisonic.opus"), Qt::CaseInsensitive))
+        if (name.endsWith(QStringLiteral(".opus"), Qt::CaseInsensitive))
             audioFiles << fi.absoluteFilePath();
         else if (name.endsWith(QStringLiteral(".JPG"), Qt::CaseInsensitive)
-                 || name.endsWith(QStringLiteral(".jpg"), Qt::CaseInsensitive))
+                 || name.endsWith(QStringLiteral(".jpg"), Qt::CaseInsensitive)
+                 || name.endsWith(QStringLiteral(".jpeg"), Qt::CaseInsensitive)
             imageFiles << fi.absoluteFilePath();
     }
 
