@@ -24,13 +24,13 @@ AmbisonicDecoder::AmbisonicDecoder(AmbisonicFormat format)
 
     m_inBuf.assign(kNCHin  * m_frameSize, 0.0f);
     m_outBuf.assign(kNCHout * m_frameSize, 0.0f);
-    m_outRing.assign(kRingFrames * kNCHout, 0.0f);
 
     for (int i = 0; i < kNCHin;  ++i) m_inPtrs[i]  = m_inBuf.data()  + i * m_frameSize;
     for (int i = 0; i < kNCHout; ++i) m_outPtrs[i] = m_outBuf.data() + i * m_frameSize;
 
-    qDebug("AmbisonicDecoder: created — frameSize=%d codecStatus=%d (0=OK)",
-           m_frameSize, (int)ambi_bin_getCodecStatus(m_hAmbi));
+    qDebug("AmbisonicDecoder: created — frameSize=%d processingDelay=%d codecStatus=%d (0=OK)",
+           m_frameSize, ambi_bin_getProcessingDelay(),
+           (int)ambi_bin_getCodecStatus(m_hAmbi));
 }
 
 AmbisonicDecoder::~AmbisonicDecoder()
@@ -55,6 +55,13 @@ void AmbisonicDecoder::setOrientation(float yaw, float pitch, float roll)
     ambi_bin_setRoll (m_hAmbi, roll  * kRadToDeg);
 }
 
+void AmbisonicDecoder::reset()
+{
+    m_inCount         = 0;
+    m_fadeInRemaining = kFadeInFrames;
+    std::fill(m_inBuf.begin(), m_inBuf.end(), 0.0f);
+}
+
 void AmbisonicDecoder::applyFormat()
 {
     if (m_format == AmbisonicFormat::AmbiX) {
@@ -70,7 +77,9 @@ void AmbisonicDecoder::process(const float* in4ch, float* out2ch, int frameCount
 {
     std::fill(out2ch, out2ch + frameCount * 2, 0.0f);
 
-    int inOffset = 0;
+    int outOffset = 0;
+    int inOffset  = 0;
+
     while (inOffset < frameCount) {
         const int toAdd = std::min(frameCount - inOffset, m_frameSize - m_inCount);
 
@@ -88,24 +97,27 @@ void AmbisonicDecoder::process(const float* in4ch, float* out2ch, int frameCount
                              (const float *const *)m_inPtrs,
                              (float *const *)m_outPtrs,
                              kNCHin, kNCHout, m_frameSize);
+            m_inCount = 0;
 
+            // Write directly to output buffer — always fits since:
+            //   outOffset + m_frameSize ≤ inOffset ≤ frameCount
             for (int i = 0; i < m_frameSize; ++i) {
-                const int pos = (m_ringWrite + i) % kRingFrames;
-                m_outRing[pos * kNCHout + 0] = m_outPtrs[0][i];
-                m_outRing[pos * kNCHout + 1] = m_outPtrs[1][i];
+                out2ch[(outOffset + i) * 2 + 0] = m_outPtrs[0][i];
+                out2ch[(outOffset + i) * 2 + 1] = m_outPtrs[1][i];
             }
-            m_ringWrite  = (m_ringWrite + m_frameSize) % kRingFrames;
-            m_ringCount += m_frameSize;
-            m_inCount    = 0;
+            outOffset += m_frameSize;
         }
     }
 
-    const int toDrain = std::min(m_ringCount, frameCount);
-    for (int i = 0; i < toDrain; ++i) {
-        const int pos = (m_ringRead + i) % kRingFrames;
-        out2ch[i * 2 + 0] = m_outRing[pos * kNCHout + 0];
-        out2ch[i * 2 + 1] = m_outRing[pos * kNCHout + 1];
+    // Apply fade-in ramp to mask STFT onset transient after reset
+    if (m_fadeInRemaining > 0) {
+        const int toFade = std::min(m_fadeInRemaining, outOffset);
+        const int rampStart = kFadeInFrames - m_fadeInRemaining;
+        for (int i = 0; i < toFade; ++i) {
+            const float gain = static_cast<float>(rampStart + i) / kFadeInFrames;
+            out2ch[i * 2 + 0] *= gain;
+            out2ch[i * 2 + 1] *= gain;
+        }
+        m_fadeInRemaining -= toFade;
     }
-    m_ringRead  = (m_ringRead + toDrain) % kRingFrames;
-    m_ringCount -= toDrain;
 }

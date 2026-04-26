@@ -168,6 +168,7 @@ void AudioEngine::play()
     if (!m_sink) return;
 
     m_device.resetPlayback();
+    m_decoder.reset();
 
     // Clean up any previous push timer.
     if (m_audioTimer) {
