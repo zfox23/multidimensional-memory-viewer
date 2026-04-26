@@ -55,27 +55,25 @@ Audio is captured with a **Zoom H2n** portable recorder in its native **4-channe
 - Trim to approximately 15 seconds
 - Create a seamless loop (fade-to-loop at the edit point)
 
-The finished audio is exported as a **4-channel Opus file** (`.ambisonic.opus`) encoded at 48 kHz. The four channels carry **First-Order Ambisonics (FOA) B-format** signals in **FuMa channel order**:
+The finished audio is exported as a **4-channel Opus file** (`.ambisonic.opus`) encoded at 48 kHz. The four channels carry **First-Order Ambisonics (FOA) B-format** signals in **AmbiX channel order** (WYZX):
 
 | Channel | Signal | Description |
 |---------|--------|-------------|
 | 0 | W | Omnidirectional (pressure), normalised to 1/√2 |
-| 1 | X | Front–back figure-of-eight |
-| 2 | Y | Left–right figure-of-eight |
-| 3 | Z | Up–down figure-of-eight |
-
-At playback, the viewer applies a **yaw/pitch rotation matrix** to the B-format channels based on the current camera orientation, then decodes to stereo using a **virtual speaker pair at ±30° azimuth** (ITU-R BS.775 stereo). This means that as you pan left or right, sound sources rotate to match their apparent on-screen positions.
+| 1 | Y | Left–right figure-of-eight |
+| 2 | Z | Up–down figure-of-eight |
+| 3 | X | Front–back figure-of-eight |
 
 ### Filename Convention
 
 ```
 2026-04-25 13-48-43 ZFP_3447.JPG
-└──────────────────┘ └─────────┘
+└──────────────────┘ └─────┘
   Timestamp prefix    Camera identifier
 
 2026-04-25 13-48-43 ZFP_3447.JPG SPTL004.ambisonic.opus
-                    └──────────┘ └──────────────────────┘
-                     Image token   Audio file suffix
+                    └──────┘     └──────────────────────┘
+                     Image token       Audio file suffix
 ```
 
 A single audio file may be associated with **multiple images** by listing all image tokens in its filename:
@@ -84,7 +82,7 @@ A single audio file may be associated with **multiple images** by listing all im
 2026-04-25 13-48-43 ZFP_3447.JPG ZFP_3448.JPG SPTL004.ambisonic.opus
 ```
 
-The viewer matches audio to images by extracting every `ZFP_XXXX.JPG` token from each audio filename, then finding the image file whose name ends with that token. Images with no matching audio file are shown in the viewer without sound.
+The viewer matches audio to images by extracting every `ZFP_XXXX` token from each audio filename, then finding the image file whose name ends with that token. Images with no matching audio file are shown in the viewer without sound.
 
 ---
 

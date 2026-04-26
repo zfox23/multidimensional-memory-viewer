@@ -124,7 +124,8 @@ bool AudioEngine::loadFile(const QString& filePath)
            qPrintable(filePath));
 
     m_device.setData(std::move(result.pcm), result.channels);
-    m_decoder.setFormat(result.channels == 4 ? AmbisonicFormat::FuMa : AmbisonicFormat::FuMa);
+    // Hardcoded to AmbiX right now since that's what the Zoom H2n produces
+    m_decoder.setFormat(AmbisonicFormat::AmbiX);
     setupSink();
     return true;
 }
@@ -254,7 +255,7 @@ QVector<float> AudioEngine::computeWaveform(const QVector<float>& pcm,
         const qint64 end   = (static_cast<qint64>(b + 1) * totalFrames) / numBuckets;
         float peak = 0.0f;
         for (qint64 f = start; f < end; ++f) {
-            // Use channel 0 (W in FuMa / omnidirectional) for the envelope
+            // Use channel 0 (W) for the envelope
             peak = std::max(peak, std::abs(pcm[f * channels]));
         }
         waveform[b] = peak;

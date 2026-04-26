@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(MultidimensionalMemoryViewer VERSION 0.1.0 LANGUAGES CXX)
+project(MultidimensionalMemoryViewer VERSION 0.1.0 LANGUAGES C CXX)
 
 # ── Spatial Audio Framework ──────────────────────────────────────────────────
 # SOURCE_SUBDIR skips SAF's top-level CMakeLists (which sets OSX arch flags and
