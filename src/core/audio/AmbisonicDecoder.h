@@ -1,43 +1,60 @@
 #pragma once
-#include <cmath>
+#include <vector>
 
 enum class AmbisonicFormat {
     FuMa,  // Channel order: W, X, Y, Z  (Zoom H2n / SoundField native)
     AmbiX  // Channel order: W, Y, Z, X  (ACN/SN3D)
 };
 
-// First-Order Ambisonics B-format decoder with head-tracking and binaural HRTF.
-// Applies a yaw/pitch/roll rotation to the B-format signals, then renders to
-// stereo binaural output using a spherical head model:
-//   • Virtual speakers at ±90° azimuth (natural ear positions)
-//   • ITD via a 32-sample delay on the contralateral path (≈ 0.67 ms @ 48 kHz)
-//   • Head shadow via a 1-pole IIR low-pass (fc ≈ 1500 Hz) on the contralateral path
+// First-Order Ambisonics B-format → stereo binaural decoder using the
+// Spatial Audio Framework (SAF) with the built-in KEMAR HRTF dataset.
+//
+// Decoding pipeline per audio block:
+//   1. Convert input from FuMa or AmbiX to ACN/SN3D
+//   2. Apply a 4×4 SH rotation matrix derived from the current head orientation
+//   3. Block-convolve the rotated 4-channel signal with a binaural decoder
+//      filter bank (SAF MagLS method, KEMAR HRTF @ 48 kHz, 512-tap FIR)
+//   4. Output interleaved stereo
 class AmbisonicDecoder {
 public:
     explicit AmbisonicDecoder(AmbisonicFormat format = AmbisonicFormat::FuMa);
+    ~AmbisonicDecoder();
 
     void setFormat(AmbisonicFormat format);
     // Orientation in radians; yaw = rotation around up axis, pitch = tilt up/down.
     void setOrientation(float yaw, float pitch, float roll = 0.0f);
 
     // Process one block of interleaved 4-channel input → interleaved 2-channel output.
-    // frameCount is the number of sample frames (each frame = 4 input floats, 2 output floats).
-    void process(const float* input4ch, float* output2ch, int frameCount) const;
+    // frameCount is the number of sample frames (4 input floats / 2 output floats each).
+    void process(const float* input4ch, float* output2ch, int frameCount);
 
 private:
+    void initDecoder();
+    void updateRotationMatrix();
+
     AmbisonicFormat m_format;
     float m_yaw   = 0.0f;
     float m_pitch = 0.0f;
     float m_roll  = 0.0f;
+    bool  m_orientationDirty = true;
 
-    // Spherical head model HRTF state.
-    // 'mutable' so process() can remain const while updating per-sample DSP state.
-    static constexpr int kITDSamples = 32;   // ≈ 0.67 ms max ITD at 48 kHz
-    static constexpr int kDelayLen   = 64;   // ring-buffer length; must be power-of-2 and ≥ kITDSamples
+    float m_rotMtx[4 * 4] = {};  // 4×4 SH rotation matrix, ACN order
 
-    mutable float m_delayL[kDelayLen] = {};  // right-speaker signal delayed into left ear
-    mutable float m_delayR[kDelayLen] = {};  // left-speaker  signal delayed into right ear
-    mutable int   m_delayPos          = 0;
-    mutable float m_shadowL           = 0.0f;  // 1-pole IIR state, left-ear contralateral path
-    mutable float m_shadowR           = 0.0f;  // 1-pole IIR state, right-ear contralateral path
+    void* m_matrixConv = nullptr;  // saf_matrixConv handle
+
+    static constexpr int kHopSize    = 512;        // SAF convolver block size
+    static constexpr int kNCHin      = 4;           // FOA channels (W Y Z X)
+    static constexpr int kNCHout     = 2;           // binaural ears
+    static constexpr int kRingFrames = kHopSize * 8; // output ring buffer depth
+
+    // Staging buffer: accumulates rotated B-format in planar layout [nCH][kHopSize]
+    std::vector<float> m_inStage;
+    std::vector<float> m_outStage;  // planar output from convolver [nCH][kHopSize]
+    int m_stageCount = 0;           // frames currently in staging buffer
+
+    // Output ring buffer: interleaved stereo, kRingFrames deep
+    std::vector<float> m_outRing;
+    int m_ringWrite = 0;
+    int m_ringRead  = 0;
+    int m_ringCount = 0;
 };

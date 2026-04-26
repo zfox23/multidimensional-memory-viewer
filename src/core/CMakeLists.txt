@@ -14,6 +14,7 @@ target_link_libraries(mmv_core PUBLIC
     Qt6::Gui
     Qt6::Multimedia
     Qt6::Concurrent
+    saf
 )
 target_link_directories(mmv_core PUBLIC ${OPUSFILE_LIBRARY_DIRS})
 target_link_libraries(mmv_core PUBLIC ${OPUSFILE_LIBRARIES})

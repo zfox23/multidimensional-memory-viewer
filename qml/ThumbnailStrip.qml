@@ -54,8 +54,8 @@ Rectangle {
                     topMargin: 8
                     horizontalCenter: parent.horizontalCenter
                 }
-                width: 110
-                height: 80
+                width: 120
+                height: 120
                 // Provider returns an exact left-eye square; show it in full
                 source: "image://mdmthumbnail/" + encodeURIComponent(imagePath)
                 fillMode: Image.PreserveAspectFit

@@ -1,6 +1,26 @@
 cmake_minimum_required(VERSION 3.25)
 project(MultidimensionalMemoryViewer VERSION 0.1.0 LANGUAGES CXX)
 
+# ── Spatial Audio Framework ──────────────────────────────────────────────────
+# SOURCE_SUBDIR skips SAF's top-level CMakeLists (which sets OSX arch flags and
+# requires examples/tests) and configures only the framework library directly.
+include(FetchContent)
+if(NOT DEFINED SAF_PERFORMANCE_LIB)
+    if(APPLE)
+        set(SAF_PERFORMANCE_LIB "SAF_USE_APPLE_ACCELERATE_LP64")
+    else()
+        set(SAF_PERFORMANCE_LIB "SAF_USE_OPEN_BLAS_AND_LAPACKE")
+    endif()
+endif()
+FetchContent_Declare(
+    SAF
+    GIT_REPOSITORY https://github.com/leomccormack/Spatial_Audio_Framework.git
+    GIT_TAG        master
+    GIT_SHALLOW    TRUE
+    SOURCE_SUBDIR  framework
+)
+FetchContent_MakeAvailable(SAF)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)

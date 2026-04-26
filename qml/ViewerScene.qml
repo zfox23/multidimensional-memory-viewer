@@ -68,6 +68,8 @@ Item {
         // Sensitivity: radians of rotation per pixel
         readonly property real kSens: 0.004
 
+        cursorShape: pressed ? Qt.BlankCursor : Qt.OpenHandCursor
+
         onPressed: (mouse) => {
             lastX = mouse.x
             lastY = mouse.y

@@ -25,12 +25,12 @@ QList<MdmFile> MdmScanner::scan(const QString& folderPath)
     // Index images by their ZFP_XXXX.JPG token (e.g. "ZFP_3447.JPG")
     // A token is just the filename without the leading timestamp prefix.
     // The filename is like: "2026-04-25 13-48-43 ZFP_3447.JPG"
-    // The token embedded in audio filenames is just the bare "ZFP_3447.JPG" portion.
+    // The token embedded in audio filenames is just the bare "ZFP_3447" portion.
     QHash<QString, QString> tokenToImagePath;
     for (const QString& imgPath : imageFiles) {
         const QString name = QFileInfo(imgPath).fileName();
         // Extract the token: everything from "ZFP_" onwards (case-insensitive)
-        static const QRegularExpression tokenRx(QStringLiteral("(ZFP_\\d+\\.JPG)"),
+        static const QRegularExpression tokenRx(QStringLiteral("(ZFP_\\d+)"),
                                                 QRegularExpression::CaseInsensitiveOption);
         const auto m = tokenRx.match(name);
         if (m.hasMatch())
@@ -38,7 +38,7 @@ QList<MdmFile> MdmScanner::scan(const QString& folderPath)
     }
 
     // Match each audio file to one or more images
-    static const QRegularExpression audioTokenRx(QStringLiteral("(ZFP_\\d+\\.JPG)"),
+    static const QRegularExpression audioTokenRx(QStringLiteral("(ZFP_\\d+)"),
                                                   QRegularExpression::CaseInsensitiveOption);
 
     QList<MdmFile> results;
