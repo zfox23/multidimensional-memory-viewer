@@ -12,6 +12,16 @@ AmbisonicDecoder::AmbisonicDecoder(AmbisonicFormat format)
     ambi_bin_create(&m_hAmbi);
     ambi_bin_setInputOrderPreset(m_hAmbi, SH_ORDER_FIRST);
     ambi_bin_setEnableRotation(m_hAmbi, 1);
+
+    // ITD-based phase simplification (PREPROC_ALL = diffuse-field EQ + phase simplification).
+    // The phase simplification replaces complex inter-aural phase with a clean ITD delay,
+    // which is the main driver of externalization — sounds appearing outside the head.
+    ambi_bin_setHRIRsPreProc(m_hAmbi, HRIR_PREPROC_ALL);
+
+    // Diffuse covariance matching: keeps perceived source positions stable so sounds
+    // "stick" to their direction rather than wandering. Improves the "pointed" quality.
+    ambi_bin_setEnableDiffuseMatching(m_hAmbi, 1);
+
     applyFormat();
 
     // ambi_bin_init must come before ambi_bin_initCodec: init resets
